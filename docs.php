@@ -4,7 +4,9 @@
  * @file
  * dynamic searchable php source docs
  */
-require 'includes/tokens.php';
+
+require 'includes/documentables.php';
+
 class DocSearch {
     public $search;
     public $documentables = array();
@@ -84,6 +86,6 @@ class DocSearch {
         return $paths;
     }
     private function parse_file($file) {
-        return parse_tokens(file_get_contents($file), $file);                //not testable
+        return Documentable::from_file($file);
     }
 }
