@@ -2,10 +2,10 @@
 
 /**
  * @file
- * documentable and subclasses
+ * documentable superclasses
  */
 
-class Documentable {
+abstract class Documentable {
     var $type;
     var $name;
     var $flags;
@@ -61,58 +61,4 @@ class Documentable {
         if(strlen($string) < 80) return $string;
         return substr($string, 0, 55) . ' ... ' . substr($string, -20);
     }
-}
-class DocumentableFunction extends Documentable {
-    var $type = 'function';
-    var $line;
-    var $file;
-    var $params;
-    var $source;
-    function description() {
-        return sprintf('%s%s',
-            $this->name,
-            $this->params ? "({$this->params})" : '');
-    }
-}
-class DocumentableMethod extends DocumentableFunction {
-    var $type = 'method';
-    var $classname;
-    function description() {
-        return sprintf('%s::%s',
-            $this->classname,
-            parent::description());
-    }
-}
-class DocumentableProperty extends Documentable {
-    var $type = 'property';
-    var $line;
-    var $file;
-    var $classname;
-    var $default_value;
-    var $details = 'default_value';
-    function description() {
-        return sprintf('%s::%s%s',
-            $this->classname,
-            $this->name,
-            $this->default_value ? " = {$this->default_value}" : '');
-    }
-}
-class DocumentableClass extends Documentable {
-    var $type = 'class';
-    var $line;
-    var $file;
-    var $extends;
-    var $properties;
-    var $methods;
-    var $details = array('extends', 'properties', 'methods');
-}
-class DocumentableFile extends Documentable {
-    var $type = 'file';
-    var $includes;
-    var $classes;
-    var $functions;
-    var $details = array('classes', 'functions');
-}
-class DocumentableInclude extends Documentable {
-    var $type = 'include';
 }

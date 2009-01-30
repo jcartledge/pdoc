@@ -1,6 +1,6 @@
 <?php
 
-include 'documentable.php';
+include 'documentables.php';
 
 function parse_tokens($file) {
     $tokens = token_get_all(file_get_contents($file));

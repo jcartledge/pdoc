@@ -4,7 +4,6 @@
  * @file
  * dynamic searchable php source docs
  */
-include 'DB.php'; 
 require 'includes/tokens.php';
 class DocSearch {
     public $search;
