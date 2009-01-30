@@ -53,11 +53,8 @@ class TestOfTokens extends UnitTestCase {
         $documentables = $this->parse_tokens('includes');
         $this->assertTrue($documentables[0]->includes[0]->name == '"a.php"');
     }
-    private function parse_tokens($doc_name) {
-        $doc = $this->test_docs[$doc_name];
-        $filename = '/tmp/' . md5($doc);
-        file_put_contents($filename, $doc);
-        return parse_tokens($filename);
+    function parse_tokens($file) {
+        return parse_tokens($this->test_docs[$file], $file);
     }
 }
 

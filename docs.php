@@ -84,6 +84,6 @@ class DocSearch {
         return $paths;
     }
     private function parse_file($file) {
-        return parse_tokens($file);                //not testable
+        return parse_tokens(file_get_contents($file), $file);                //not testable
     }
 }
