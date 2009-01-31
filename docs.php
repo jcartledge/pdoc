@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 
 /**
@@ -6,19 +7,43 @@
  */
 
 require 'includes/documentables.php';
+require '../argv/argv.php';
 
-class DocSearch {
+class CliScript {
+    function __construct() {
+        $args = $_SERVER['argv'];
+        array_shift($args);
+        $options = new Options($this->description, $args);
+        $this->main($options);
+        echo "{$this}\r\n";
+    }
+}
+
+class DocSearch extends CliScript{
     public $search;
     public $documentables = array();
     private $_parsed_files = array();
+    protected $description = array(
+        'paths=.                 Paths to search (colon separated)',
+        'match=*.php             Filename pattern to match',
+        '#recursive              Search in subdirectories',
+        '#i/follow_includes      Search in included and required files'
+    );
 
+    function main($options) {
+        $this->search(
+            $options->args[0], 
+            $options->paths, 
+            $options->recursive, 
+            $options->match, 
+            $options->follow_includes);
+    }
     /**
      * @todo support filtering results on type
      */
-    function __construct($search, $paths = '.', $recursive = false, $match = '*.php', $follow_includes = false) {
+    function search($search, $paths = '.', $recursive = false, $match = '*.php', $follow_includes = false) {
         $this->search = $search;
-        $this->documentables = array();
-        $paths = explode(':', $paths);          //not windows
+        $paths = explode(':', $paths);          //not windows :(
         foreach ($paths as $path) {
             if(is_file($path)) {
                 $this->do_file($path, $follow_includes);
@@ -37,7 +62,7 @@ class DocSearch {
         if(method_exists($out[0], 'detail_view')) {
             $out[0] = $out[0]->detail_view();
         }
-        return implode("\r\n", $out);
+        return implode("\r\n", array_filter(array_map(trim, $out)));
     }
 
     private function do_path($path, $recursive, $match, $follow_includes) {
@@ -49,7 +74,7 @@ class DocSearch {
                 if($recursive) {                //not testable
                     $this->do_path($file, $recursive, $match, $follow_includes);
                 }
-            } elseif(fnmatch($match, $file)) {          //does this work? seems to...
+            } elseif(fnmatch("*{$match}*", $file)) {
                 $this->do_file($file, $follow_includes);
             }
         }
@@ -59,7 +84,7 @@ class DocSearch {
         if($this->_parsed_files[$filename]) return;
         $parsed = (array)$this->parse_file($filename);
         $includes = $parsed[0]->includes;
-        $this->documentables = array_merge($this->documentables, $parsed);
+        $this->documentables = array_merge($this->documentables, $parsed);      //filter here
         if ($follow_includes && $includes) {
             $paths = $this->_localised_include_path($filename);
             foreach($includes as $include) {
@@ -89,3 +114,4 @@ class DocSearch {
         return Documentable::from_file($file);
     }
 }
+new DocSearch;

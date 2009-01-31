@@ -2,23 +2,30 @@
 
 /**
  * @file
- * documentable superclasses
+ * documentable superclass
  */
 
 include 'token.php';
 
+/**
+ * @class
+ * Documentable provides output routines for subclasses
+ * and factory methods for building a list of documentables
+ * from php input
+ */
 abstract class Documentable {
     var $type;
     var $name;
     var $flags;
     var $doc_comment;
+    var $already_output;
     function __toString() {
-        return sprintf("%s%s %s %s", 
+        return !$this->already_output++ ? sprintf("%s%s %s %s", 
             $this->flags ? implode(' ', array_keys($this->flags)) . ' ' : '',
             $this->type, 
-            $this->_truncate($this->description()), 
+            chr(27) . '[1m' . $this->_truncate($this->description()) . chr(27) . '[m', 
             ($this->line ? "at line {$this->line} " : '') . 
-            ($this->file ? "of {$this->file}" : ''));
+            ($this->file ? "of {$this->file}" : '')) : '';
     }
     function detail_view() {
         $out .= $this;
@@ -38,7 +45,7 @@ abstract class Documentable {
         return $out;
     }
     function match($search) {
-        return fnmatch("*{$search}*", $this->name);
+        return fnmatch("*{$search}*", $this->description());
     }
     function description() {
         return $this->name;
@@ -67,6 +74,10 @@ abstract class Documentable {
     static function from_file($filename) {
         return self::from_string(file_get_contents($filename), $filename);
     }
+    /**
+     * @param $data string php document
+     * @param $name string document identifier - filename
+     */
     static function from_string($data, $name) {
         $tokens = token_get_all($data);
         $realpath = str_replace($_ENV['PWD'] . DIRECTORY_SEPARATOR, '', realpath($name));
@@ -179,6 +190,8 @@ abstract class Documentable {
                     $class->flags['abstract'] = 'abstract';
                     $abstract = false;
                 }
+                $this_file->classes[] = $class;
+                $documentables[] = $class;
             }
             elseif ($in_class_header && $token->type == T_EXTENDS) {
                 $in_class_extends = true;
@@ -190,8 +203,6 @@ abstract class Documentable {
             } 
             elseif ($in_class && $token == '}') {
                 $in_class = false;
-                $this_file->classes[] = $class;
-                $documentables[] = $class;
                 $class->post_process();
                 $class = null;
             } 
@@ -232,28 +243,28 @@ abstract class Documentable {
             } 
 
             elseif ($in_property_default) {
-                $property->default_value .= is_array($token) ? $token->value : $token; 
+                $property->default_value .= $token; 
             } 
             elseif ($in_property) {
-                $property->name .= is_array($token) ? $token->value : $token; 
+                $property->name .= trim($token); 
             } 
             elseif ($in_class_extends ) {
-                $class->extends .= trim(is_array($token) ? $token->value : $token); 
+                $class->extends .= $token; 
             } 
             elseif ($in_class_header ) {
-                $class->name .= trim(is_array($token) ? $token->value : $token); 
+                $class->name .= trim($token); 
             } 
             elseif ($in_function_params) {
-                $function->params .= is_array($token) ? $token->value : $token; 
+                $function->params .= $token; 
             } 
             elseif ($in_function_header) {
-                $function->name .= trim(is_array($token) ? $token->value : $token); 
+                $function->name .= trim($token); 
             } 
             elseif ($in_function) {
                 //$function->source .= is_array($token) ? $token->value : $token; 
             }
             elseif ($include) {
-                $include->name .= trim(is_array($token) ? $token->value : $token); 
+                $include->name .= $token; 
             } 
         }
         $this_file->post_process();

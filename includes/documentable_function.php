@@ -8,6 +8,6 @@ class DocumentableFunction extends Documentable {
     function description() {
         return sprintf('%s%s',
             $this->name,
-            $this->params ? "({$this->params})" : '');
+            $this->params ? "({$this->params})" : '()');
     }
 }

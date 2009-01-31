@@ -13,4 +13,8 @@ class DocumentableProperty extends Documentable {
             $this->name,
             $this->default_value ? " = {$this->default_value}" : '');
     }
+    function post_process() {
+        $this->default_value = ltrim($this->default_value);
+        parent::post_process();
+    }
 }
