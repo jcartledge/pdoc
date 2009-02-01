@@ -264,7 +264,7 @@ abstract class Documentable {
                 //$function->source .= is_array($token) ? $token->value : $token; 
             }
             elseif ($include) {
-                $include->name .= $token; 
+                $include->name .= trim($token); 
             } 
         }
         $this_file->post_process();

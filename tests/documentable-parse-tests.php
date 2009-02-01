@@ -1,9 +1,10 @@
+#!/usr/bin/php
 <?php
 require_once('Pearified/Testing/SimpleTest/unit_tester.php');
 require_once('Pearified/Testing/SimpleTest/reporter.php');
 require_once('../includes/documentables.php');
 
-class TestOfTokens extends UnitTestCase {
+class TestOfDocumentableFromString extends UnitTestCase {
     var $test_docs = array(
         'simple class with properties' =>
         '<?php
@@ -57,7 +58,8 @@ class TestOfTokens extends UnitTestCase {
         return Documentable::from_string($this->test_docs[$doc_name], $doc_name);
     }
 }
-
-$test = new TestOfTokens();
-$test->run(new TextReporter());
+if(__FILE__ == realpath($_SERVER['SCRIPT_NAME'])) {
+    $test = new TestOfDocumentableFromString;
+    $test->run(new TextReporter);
+}
 ?>

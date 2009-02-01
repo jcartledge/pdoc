@@ -56,7 +56,11 @@ class Options {
 
     private function parse_value($arg) {
         if($this->current_opt) {
-            $this->{$this->current_opt} = $arg;
+            //strip leading equals if provided
+            if($arg = preg_replace('/^(=)/', '', $arg)) {
+                $this->{$this->current_opt} = $arg;
+                unset($this->current_opt);
+            }
         } else {
             $this->args[] = $arg;
         }
@@ -66,7 +70,8 @@ class Options {
         $shopt = $this->short_opt_name($str);
         if(!$shopt) return;
         $lopt = $this->long_opt_name($shopt);
-        $remainder = substr($str, strlen($shopt) + 1);
+        //strip leading equals if provided
+        $remainder = preg_replace('/^(=)/', '', substr($str, strlen($shopt) + 1));
         if($this->is_flag($lopt)){
             $this->{$lopt} = true;
             if($remainder) {
