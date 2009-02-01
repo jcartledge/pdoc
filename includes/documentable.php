@@ -45,7 +45,7 @@ abstract class Documentable {
         return $out;
     }
     function match($search) {
-        return fnmatch("*{$search}*", $this->description());
+        return preg_match("^{$search}^", $this->description());
     }
     function description() {
         return $this->name;

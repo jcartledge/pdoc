@@ -6,8 +6,15 @@ class CliScript {
     function __construct() {
         $args = $_SERVER['argv'];
         array_shift($args);
-        $options = new Options($this->description, $args);
-        $this->main($options);
-        echo "{$this}\r\n";
+        $description = array_merge(array('#help' => 'Display this message'), $this->description);
+        $options = new Options($description, $args);
+        if($options->help) {
+            $this->help();
+        } else {
+            $this->main($options);
+        }
+    }
+    function help() {
+        echo "FUCK OFF";
     }
 }

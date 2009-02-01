@@ -4,7 +4,7 @@ class Options {
     var $args = array();
     private $opts = array();
     private $current_opt;
-
+    private $parsed_equals;
     function __construct($description, $args = null) {
         if(is_string($description)) {
             $description = explode(',', $description);
@@ -56,8 +56,10 @@ class Options {
 
     private function parse_value($arg) {
         if($this->current_opt) {
-            //strip leading equals if provided
-            if($arg = preg_replace('/^(=)/', '', $arg)) {
+            $orig_arg = $arg;
+            $arg = $this->parsed_equals ? $arg : preg_replace('/^(=)/', '', $arg);
+            $this->parsed_equals |= $arg != $orig_arg;
+            if($arg) {
                 $this->{$this->current_opt} = $arg;
                 unset($this->current_opt);
             }
@@ -71,13 +73,15 @@ class Options {
         if(!$shopt) return;
         $lopt = $this->long_opt_name($shopt);
         //strip leading equals if provided
-        $remainder = preg_replace('/^(=)/', '', substr($str, strlen($shopt) + 1));
+        $remainder = substr($str, strlen($shopt) + 1);
         if($this->is_flag($lopt)){
             $this->{$lopt} = true;
             if($remainder) {
                 $this->parse_short_opt('-' . $remainder);
             }
         } else {
+            $this->parsed_equals = $remainder{0} == '=';
+            $remainder = preg_replace('/^(=)/', '', $remainder);
             if($remainder) {
                 $this->{$lopt} = $remainder;
             } else {
@@ -90,6 +94,7 @@ class Options {
     private function parse_long_opt($str) {
         $lopt = $this->long_opt_name($str);
         if(!$lopt) return;
+        $this->parsed_equals = strpos($str, '=') !== false; 
         list(,$value) = explode('=', $str, 2);
         $this->{$lopt} = $this->is_flag($lopt) ?
             true :

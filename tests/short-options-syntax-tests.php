@@ -62,6 +62,34 @@ class TestOfShortOptionSyntax extends TestOfOptions {
             array('-p', '=', 'asdfg', 'arg 1'),
             'args[0]', 
             'arg 1'),
+        'short option with equals, value begins with equals' => array(
+            '-p==asdfg',
+            'paths', 
+            '=asdfg'),
+        'short option with equals and whitespace 1, value begins with equals' => array(
+            array('-p', '==asdfg'),
+            'paths', 
+            '=asdfg'),
+        'short option with equals and whitespace 2, value begins with equals' => array(
+            array('-p=', '=asdfg'),
+            'paths', 
+            '=asdfg'),
+        'short option with equals and whitespace 3, value begins with equals' => array(
+            array('-p', '=', '=asdfg'),
+            'paths', 
+            '=asdfg'),
+        'short option with equals, value is equals 1' => array(
+            array('-p=='),
+            'paths',
+            '='),
+        'short option with equals, value is equals 2' => array(
+            array('-p=', '='),
+            'paths',
+            '='),
+        'short option with equals, value is equals 3' => array(
+            array('-p', '=', '='),
+            'paths',
+            '='),
     );
 }
 if(__FILE__ == realpath($_SERVER['SCRIPT_NAME'])) {

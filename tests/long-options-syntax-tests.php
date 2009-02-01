@@ -14,7 +14,7 @@ class TestOfLongOptionSyntax extends TestOfOptions {
         '#follow_includes        Search in included and required files'
     );
     var $parse_tests = array(
-        'long option with no whitespace' => array(
+        'long option with equals no whitespace' => array(
             '--paths=asdfg',
             'paths', 
             'asdfg'),
@@ -34,6 +34,22 @@ class TestOfLongOptionSyntax extends TestOfOptions {
             array('--paths', '=', 'asdfg'),
             'paths', 
             'asdfg'),
+        'long option with equals no whitespace, value begins with equals' => array(
+            '--paths==asdfg',
+            'paths', 
+            '=asdfg'),
+        'long option with whitespace equals 1, value begins with equals' => array(
+            array('--paths=', '=asdfg'),
+            'paths', 
+            '=asdfg'),
+        'long option with whitespace equals 2, value begins with equals' => array(
+            array('--paths', '==asdfg'),
+            'paths', 
+            '=asdfg'),
+        'long option with whitespace equals 3, value begins with equals' => array(
+            array('--paths', '=', '=asdfg'),
+            'paths', 
+            '=asdfg'),
     );
 }
 if(__FILE__ == realpath($_SERVER['SCRIPT_NAME'])) {

@@ -27,6 +27,7 @@ class DocSearch extends CliScript{
             $options->recursive, 
             $options->match, 
             $options->follow_includes);
+        echo "\r\n$this\r\n";
     }
     /**
      * @todo support filtering results on type
@@ -71,6 +72,7 @@ class DocSearch extends CliScript{
     }
 
     private function do_file($filename, $follow_includes) {
+        echo '.';
         if($this->_parsed_files[$filename]) return;
         $parsed = (array)$this->parse_file($filename);
         $includes = $parsed[0]->includes;
