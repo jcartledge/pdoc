@@ -1,7 +1,7 @@
 <?php
 require_once('Pearified/Testing/SimpleTest/unit_tester.php');
 require_once('Pearified/Testing/SimpleTest/reporter.php');
-require_once('documentables.php');
+require_once('../includes/documentables.php');
 
 class TestOfTokens extends UnitTestCase {
     var $test_docs = array(
