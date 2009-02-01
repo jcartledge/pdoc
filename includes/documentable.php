@@ -5,7 +5,7 @@
  * documentable superclass
  */
 
-include 'token.php';
+require 'token.php';
 
 /**
  * @class

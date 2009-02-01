@@ -1,0 +1,655 @@
+#!/usr/bin/php
+<?php
+
+
+class DocumentableInclude extends Documentable {
+    var $type = 'include';
+}
+
+class Token {
+    public $type;
+    public $value;
+    public $line;
+    function __toString() {
+        return $this->value;
+    }
+    function __construct($token) {
+        if(is_array($token)) {
+            list($this->type, $this->value, $this->line) = $token;
+        } else {
+            $this->value = (string)$token;
+        }
+    }
+}
+
+class DocumentableProperty extends Documentable {
+    var $type = 'property';
+    var $line;
+    var $file;
+    var $classname;
+    var $default_value;
+    var $details = 'default_value';
+    function description() {
+        return sprintf('%s::%s%s',
+            $this->classname,
+            $this->name,
+            $this->default_value ? " = {$this->default_value}" : '');
+    }
+    function post_process() {
+        $this->default_value = ltrim($this->default_value);
+        parent::post_process();
+    }
+}
+
+
+/**
+ * @file
+ * include all documentables
+ */
+
+
+
+
+
+
+
+
+
+class DocumentableFile extends Documentable {
+    var $type = 'file';
+    var $includes;
+    var $classes;
+    var $functions;
+    var $details = array('classes', 'functions');
+}
+
+
+class Options {
+    var $args = array();
+    private $opts = array();
+    private $current_opt;
+    private $parsed_equals;
+    function __construct($description, $args = null) {
+        if(is_string($description)) {
+            $description = explode(',', $description);
+        } else {
+            $description = (array)$description;
+        }
+        foreach($description as $name => $desc) {
+            $desc = trim($desc);
+            $opt = array('description' => $desc);
+            if(is_numeric($name)) {
+                list($name, $opt['description']) = preg_split('/[\s]+/', $desc, 2);
+            }
+            $name = trim($name);
+            if($name{0} == '#') {
+                $opt['flag'] = true;
+                $name = substr($name, 1);
+            }
+            list($name, $default_value) = array_map(trim, explode('=', $name, 2));
+            list($name, $opt['short']) = explode('/', $name, 2);
+            if($opt['short']) {
+                list($name, $opt['short']) = array($opt['short'], $name);
+            }
+            $this->opts[$name] = $opt;
+            if($default_value) $this->$name = $default_value;
+        }
+        $this->set_short_names();
+        if($args) {
+            $this->parse($args);
+        }
+    }
+
+    function parse($args) {
+        foreach($args as $arg) {
+            $this->parse_long_opt($arg) or
+            $this->parse_short_opt($arg) or
+            $this->parse_value($arg);
+        }
+        return $this;
+    }
+
+    protected function set_short_names() {
+        $names = array_keys($this->opts);
+        sort($names);
+        foreach($names as $name) {
+            if(isset($this->opts[$name]['short'])) continue;
+            $this->opts[$name]['short'] = $this->unique_short_name($name);
+        }
+    }
+
+    private function parse_value($arg) {
+        if($this->current_opt) {
+            $orig_arg = $arg;
+            $arg = $this->parsed_equals ? $arg : preg_replace('/^(=)/', '', $arg);
+            $this->parsed_equals |= $arg != $orig_arg;
+            if($arg) {
+                $this->{$this->current_opt} = $arg;
+                unset($this->current_opt);
+            }
+        } else {
+            $this->args[] = $arg;
+        }
+    }
+
+    private function parse_short_opt($str) {
+        $shopt = $this->short_opt_name($str);
+        if(!$shopt) return;
+        $lopt = $this->long_opt_name($shopt);
+        //strip leading equals if provided
+        $remainder = substr($str, strlen($shopt) + 1);
+        if($this->is_flag($lopt)){
+            $this->{$lopt} = true;
+            if($remainder) {
+                $this->parse_short_opt('-' . $remainder);
+            }
+        } else {
+            $this->parsed_equals = $remainder{0} == '=';
+            $remainder = preg_replace('/^(=)/', '', $remainder);
+            if($remainder) {
+                $this->{$lopt} = $remainder;
+            } else {
+                $this->current_opt = $lopt;
+            }
+        }
+        return true;
+    }
+
+    private function parse_long_opt($str) {
+        $lopt = $this->long_opt_name($str);
+        if(!$lopt) return;
+        $this->parsed_equals = strpos($str, '=') !== false; 
+        list(,$value) = explode('=', $str, 2);
+        $this->{$lopt} = $this->is_flag($lopt) ?
+            true :
+            $value;
+        $this->current_opt = strlen($value) || $this->is_flag($lopt) ?
+            null :
+            $lopt;
+        return true;
+    }
+
+    private function short_opt_name($str) {
+        // make sure it's an argv short opt
+        if(strpos($str, '-') !== 0) return;
+        foreach($this->opts as $name => $desc) {
+            if(strpos($str, $desc['short']) === 1) return $desc['short'];
+        }
+        return false;
+    }
+
+    /**
+     * accepts string
+     * either from argv array
+     * or a short opt name
+     */
+    private function long_opt_name($str) {
+        // handle short option names
+        foreach($this->opts as $opt_name => $opt_def) {
+            if($opt_def['short'] == $str) return $opt_name;
+        }
+        // make sure it's an argv long opt
+        if(strpos($str, '--') !== 0) return;
+        // split on equals and lookup
+        $str = substr(array_shift(explode('=', $str, 2)), 2);
+        return array_search($str, array_keys($this->opts)) !== false ?
+            $str :
+            false;
+    }
+
+    private function is_arg($str) {
+        return strpos($str, '--') !== 0 && strpos($str, '-') !== 0;
+    }
+
+    private function is_flag($opt) {
+        return $this->opts[$opt]['flag'];
+    }
+
+    private function unique_short_name($name) {
+        while(!$this->is_unique_short_name($short)) $short .= $name{$i++};
+        return $short;
+    }
+
+    private function is_unique_short_name($name) {
+        if(!$name) return false;
+        foreach($this->opts as $name => $desc) {
+            if($name == $desc['short']) return false;
+        }
+        return true;
+    }
+}
+
+class DocumentableMethod extends DocumentableFunction {
+    var $type = 'method';
+    var $classname;
+    function description() {
+        return sprintf('%s::%s',
+            $this->classname,
+            parent::description());
+    }
+}
+
+
+/**
+ * @file
+ * documentable superclass
+ */
+
+
+
+/**
+ * @class
+ * Documentable provides output routines for subclasses
+ * and factory methods for building a list of documentables
+ * from php input
+ */
+abstract class Documentable {
+    var $type;
+    var $name;
+    var $flags;
+    var $doc_comment;
+    var $already_output;
+    function __toString() {
+        return !$this->already_output++ ? sprintf("%s%s %s %s", 
+            $this->flags ? implode(' ', array_keys($this->flags)) . ' ' : '',
+            $this->type, 
+            chr(27) . '[1m' . $this->_truncate($this->description()) . chr(27) . '[m', 
+            ($this->line ? "at line {$this->line} " : '') . 
+            ($this->file ? "of {$this->file}" : '')) : '';
+    }
+    function detail_view() {
+        $out .= $this;
+        if($this->doc_comment) $out .= "\r\n" . $this->doc_comment;
+        if($this->details) foreach((array)$this->details as $name) if($this->$name) {
+            if($this->$name) {
+                $out .= "\r\n";
+                if(is_array($this->$name)) {
+                    $out .= "\t" . implode("\r\n\t", (array)$this->$name);
+                } else {
+                    $out .= sprintf("\t%s: %s\r\n",
+                        str_replace('_', ' ', $name),
+                        $this->$name);
+                }
+            }
+        }
+        return $out;
+    }
+    function match($search) {
+        return preg_match("^{$search}^", $this->description());
+    }
+    function description() {
+        return $this->name;
+    }
+    /**
+     * do anything programmatic here
+     * e.g. line count
+     */
+    function post_process() {
+        $this->_format_doc_comment();
+    }
+    private function _format_doc_comment() {
+        if(!$this->doc_comment) return;
+        $this->doc_comment = explode("\n", $this->doc_comment);
+        foreach($this->doc_comment as $num => $line) {
+            $this->doc_comment[$num] = "\t" . ($num ? ' ' : '') . ltrim($line);
+        }
+        $this->doc_comment = implode("\n", $this->doc_comment);
+    }
+    private function _truncate($string) {
+        $string = implode(' ', array_map(trim, explode("\n", $string)));
+        if(strlen($string) < 80) return $string;
+        return substr($string, 0, 55) . ' ... ' . substr($string, -20);
+    }
+
+    static function from_file($filename) {
+        return self::from_string(file_get_contents($filename), $filename);
+    }
+    /**
+     * @param $data string php document
+     * @param $name string document identifier - filename
+     */
+    static function from_string($data, $name) {
+        $tokens = token_get_all($data);
+        $realpath = str_replace($_ENV['PWD'] . DIRECTORY_SEPARATOR, '', realpath($name));
+        $this_file = new DocumentableFile;
+        $this_file->name = $realpath;
+        $documentables = array($this_file);
+        foreach ($tokens as $token) {
+            $token = new Token($token);
+            if ($token->type == T_OPEN_TAG) {
+                $in_php = true;
+            } 
+            elseif ($token->type == T_CLOSE_TAG) {
+                $in_php = false;
+            }
+
+            elseif ($in_php && !$in_function && $token->type == T_DOC_COMMENT) {
+                if(!$this_file->doc_comment) {
+                    $this_file->doc_comment = $token->value;
+                } else {
+                    $doc_comment = $token->value;
+                }
+            }
+
+            elseif ($in_php && array_search($token->type, array(T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE)) !== false) {
+                $include = new DocumentableInclude;
+                $include->type = strtolower(str_replace('T_', '', token_name($token->type)));
+                $include->file = $realpath;
+                $include->line = $token->line;
+                $this_file->includes[] = $include;
+                $documentables[] = $include;
+            }
+            elseif ($include && $token == ';') {
+                $include = null;
+            }
+            elseif ($in_php && $token->type == T_ABSTRACT) {
+                $abstract = true;
+            }
+            elseif ($in_class && $token->type == T_STATIC) {
+                $static = true;
+            }
+            elseif ($in_class && $token->type == T_PUBLIC) {
+                $public = true;
+            }
+            elseif ($in_class && $token->type == T_PROTECTED) {
+                $protected = true;
+            }
+            elseif ($in_class && $token->type == T_PRIVATE) {
+                $private = true;
+            }
+
+            elseif ($in_php && $token->type == T_FUNCTION) {
+                if($in_class) {
+                    $function = new DocumentableMethod;
+                    $function->classname = $class->name;
+                    $class->methods[] = $function;
+                } else {
+                    $function = new DocumentableFunction;
+                    $this_file->functions[] = $function;
+                }
+                if($doc_comment) {
+                    $function->doc_comment = $doc_comment;
+                    $doc_comment = null;
+                }
+                $function->file = $realpath;
+                $function->line = $token->line;
+                $in_function_header = true;
+                foreach(explode(',','public,private,protected,static,abstract') as $note) {
+                    if($$note) {
+                        $function->flags[$note] = $note;
+                        $$note = false;
+                    }
+                }
+            }
+            elseif ($in_function_header && $token == '(') {
+                $in_function_params = true;
+            } 
+            elseif ($in_function_params && $token == ')') {
+                $in_function_params = false;
+            } 
+            elseif ($in_function_header && $token == '{') {
+                $in_function_header = false;
+                $in_function = true;
+                $blocks = 0;
+            }
+            elseif ($in_function && ($token == '{' || $token->type == T_CURLY_OPEN)) {
+                $blocks++;
+                //$function->source .= '{';
+            } 
+            elseif ($in_function && $token == '}') {
+                if(--$blocks < 0) {
+                    $in_function = false;
+                    $documentables[] = $function;
+                    $function->post_process();
+                    $function = null;
+                } else {
+                    $function->source .= '}';
+                }
+            }
+
+            elseif ($in_php && $token->type == T_CLASS) {
+                $class = new DocumentableClass;
+                $class->file = $realpath;
+                $class->line = $token->line;
+                if($doc_comment) {
+                    $class->doc_comment = $doc_comment;
+                    $doc_comment = null;
+                }
+                $in_class_header = true;
+                if($abstract) {
+                    $class->flags['abstract'] = 'abstract';
+                    $abstract = false;
+                }
+                $this_file->classes[] = $class;
+                $documentables[] = $class;
+            }
+            elseif ($in_class_header && $token->type == T_EXTENDS) {
+                $in_class_extends = true;
+            } 
+            elseif ($in_class_header && $token == '{') {
+                $in_class_header = false;
+                $in_class_extends = false;
+                $in_class = true;
+            } 
+            elseif ($in_class && $token == '}') {
+                $in_class = false;
+                $class->post_process();
+                $class = null;
+            } 
+
+            elseif (($in_class && $token->type == T_VAR)
+            || (($public || $private || $protected || $static) && $token->type == T_VARIABLE)) {
+                $property = new DocumentableProperty;
+                $property->file = $realpath;
+                $property->line = $token->line;
+                $property->classname = $class->name;
+                if($doc_comment) {
+                    $property->doc_comment = $doc_comment;
+                    $doc_comment = null;
+                }
+                $in_property = true;
+                foreach(explode(',','public,private,protected,static') as $note) {
+                    if($$note) {
+                        $property->flags[$note] = $note;
+                        $$note = false;
+                    }
+                }
+                if($token->type == T_VARIABLE) {
+                    $property->name = $token->value;
+                }
+            } 
+            //default value?
+            elseif ($in_property && $token == '=') {
+                $in_property_default = true;
+            }
+            elseif ($in_property && $token == ';') {
+                $in_property = false;
+                $in_property_default = false;
+                $property->name = trim($property->name);
+                $class->properties[] = $property;
+                $documentables[] = $property;
+                $property->post_process();
+                $property = null;
+            } 
+
+            elseif ($in_property_default) {
+                $property->default_value .= $token; 
+            } 
+            elseif ($in_property) {
+                $property->name .= trim($token); 
+            } 
+            elseif ($in_class_extends ) {
+                $class->extends .= $token; 
+            } 
+            elseif ($in_class_header ) {
+                $class->name .= trim($token); 
+            } 
+            elseif ($in_function_params) {
+                $function->params .= $token; 
+            } 
+            elseif ($in_function_header) {
+                $function->name .= trim($token); 
+            } 
+            elseif ($in_function) {
+                //$function->source .= is_array($token) ? $token->value : $token; 
+            }
+            elseif ($include) {
+                $include->name .= trim($token); 
+            } 
+        }
+        $this_file->post_process();
+        return $documentables;
+    }
+}
+
+class DocumentableClass extends Documentable {
+    var $type = 'class';
+    var $line;
+    var $file;
+    var $extends;
+    var $properties;
+    var $methods;
+    var $details = array('extends', 'properties', 'methods');
+}
+
+class DocumentableFunction extends Documentable {
+    var $type = 'function';
+    var $line;
+    var $file;
+    var $params;
+    var $source;
+    function description() {
+        return sprintf('%s%s',
+            $this->name,
+            $this->params ? "({$this->params})" : '()');
+    }
+}
+
+
+
+
+class CliScript {
+    function __construct() {
+        $args = $_SERVER['argv'];
+        array_shift($args);
+        $description = array_merge(array('#help' => 'Display this message'), $this->description);
+        $options = new Options($description, $args);
+        if($options->help) {
+            $this->help();
+        } else {
+            $this->main($options);
+        }
+    }
+    function help() {
+        echo "FUCK OFF";
+    }
+}
+
+
+
+/**
+ * @file
+ * dynamic searchable php source docs
+ */
+
+
+
+
+class DocSearch extends CliScript{
+    public $search;
+    public $documentables = array();
+    private $_parsed_files = array();
+    protected $description = array(
+        'paths=.                 Paths to search (colon separated)',
+        'match=*.php             Filename pattern to match',
+        '#recursive              Search in subdirectories',
+        '#i/follow_includes      Search in included files'
+    );
+
+    function main($options) {
+        $this->search(
+            $options->args[0], 
+            $options->paths, 
+            $options->recursive, 
+            $options->match, 
+            $options->follow_includes);
+        echo "\r\n$this\r\n";
+    }
+    /**
+     * @todo support filtering results on type
+     */
+    function search($search, $paths = '.', $recursive = false, $match = '*.php', $follow_includes = false) {
+        $this->search = $search;
+        $paths = explode(':', $paths);          //not windows :(
+        foreach ($paths as $path) {
+            if(is_file($path)) {
+                $this->do_file($path, $follow_includes);
+            } else {
+                $this->do_path($path, $recursive, $match, $follow_includes);
+            }
+        }
+    }
+    function __toString() {
+        $out = array();
+        foreach($this->documentables as $documentable) {
+            if($documentable->match($this->search)) {
+                $out[] = $documentable;
+            }
+        }
+        if(method_exists($out[0], 'detail_view')) {
+            $out[0] = $out[0]->detail_view();
+        }
+        return implode("\r\n", array_filter(array_map(trim, $out)));
+    }
+
+    private function do_path($path, $recursive, $match, $follow_includes) {
+        $files = scandir($path);                //not testable
+        foreach ($files as $file) {
+            if($file == '.' || $file == '..') continue;
+            $file = realpath($path . DIRECTORY_SEPARATOR . $file);
+            if(is_dir($file)) {                 //not testable
+                if($recursive) {                //not testable
+                    $this->do_path($file, $recursive, $match, $follow_includes);
+                }
+            } elseif(fnmatch("*{$match}*", $file)) {
+                $this->do_file($file, $follow_includes);
+            }
+        }
+    }
+
+    private function do_file($filename, $follow_includes) {
+        echo '.';
+        if($this->_parsed_files[$filename]) return;
+        $parsed = (array)$this->parse_file($filename);
+        $includes = $parsed[0]->includes;
+        $this->documentables = array_merge($this->documentables, $parsed);      //filter here
+        if ($follow_includes && $includes) {
+            $paths = $this->_localised_include_path($filename);
+            foreach($includes as $include) {
+                foreach ($paths as $path) {
+                    $include_name = $path . preg_replace('/["\(\)\'\s]*/', '', $include->name);
+                    if(file_exists($include_name)) {    //not testable
+                        $this->do_file($include_name, $follow_includes);
+                        continue(2);
+                    }
+                }
+            }
+        }
+        $this->_parsed_files[$filename] = true;
+    }
+
+    private function _localised_include_path($filename) {
+        $paths = explode(':', ini_get('include_path'));
+        $filepath = dirname($filename) . DIRECTORY_SEPARATOR;
+        foreach($paths as $i => $path) {
+            $paths[$i] = rtrim(strpos($path, '/') === 0 ?
+                $path :
+                realpath($filepath . $path), '/') . '/';
+        }
+        return $paths;
+    }
+    private function parse_file($file) {
+        return Documentable::from_file($file);
+    }
+}
+new DocSearch;

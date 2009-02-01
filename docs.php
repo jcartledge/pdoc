@@ -17,7 +17,7 @@ class DocSearch extends CliScript{
         'paths=.                 Paths to search (colon separated)',
         'match=*.php             Filename pattern to match',
         '#recursive              Search in subdirectories',
-        '#i/follow_includes      Search in included and required files'
+        '#i/follow_includes      Search in included files'
     );
 
     function main($options) {

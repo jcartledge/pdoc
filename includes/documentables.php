@@ -5,10 +5,10 @@
  * include all documentables
  */
 
-include 'documentable.php';
-include 'documentable_function.php';
-include 'documentable_method.php';
-include 'documentable_property.php';
-include 'documentable_class.php';
-include 'documentable_file.php';
-include 'documentable_include.php';
+require 'documentable.php';
+require 'documentable_function.php';
+require 'documentable_method.php';
+require 'documentable_property.php';
+require 'documentable_class.php';
+require 'documentable_file.php';
+require 'documentable_include.php';

@@ -1,6 +1,6 @@
 <?php
 
-include 'options.php';
+require 'options.php';
 
 class CliScript {
     function __construct() {
