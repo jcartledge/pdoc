@@ -71,6 +71,16 @@ abstract class Documentable {
         return substr($string, 0, 55) . ' ... ' . substr($string, -20);
     }
 
+    private static function rel_path($name) {
+        $ds = DIRECTORY_SEPARATOR;
+        if(isset($_SERVER['CYGWIN'])) {
+            $name = str_replace("\n", ' ', `cygpath {$name}`);
+            $ds = '/';
+        } else {
+            $name = realpath($name);
+        }
+        return str_replace($_ENV['PWD'] . $ds, '', $name);
+    }
     static function from_file($filename) {
         return self::from_string(file_get_contents($filename), $filename);
     }
@@ -79,8 +89,10 @@ abstract class Documentable {
      * @param $name string document identifier - filename
      */
     static function from_string($data, $name) {
+        //if we process binary files php will cry like a baby
+        if(preg_match('/[\x00]/', $data, $matches)) return;
         $tokens = token_get_all($data);
-        $realpath = str_replace($_ENV['PWD'] . DIRECTORY_SEPARATOR, '', realpath($name));
+        $realpath = self::rel_path($name);
         $this_file = new DocumentableFile;
         $this_file->name = $realpath;
         $documentables = array($this_file);
