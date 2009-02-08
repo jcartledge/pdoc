@@ -1,8 +1,8 @@
 <?php
 
 class Options {
-    var $args = array();
-    private $opts = array();
+    public $args = array();
+    public $opts = array();
     private $current_opt;
     private $parsed_equals;
     function __construct($description, $args = null) {

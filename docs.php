@@ -21,6 +21,7 @@ class DocSearch extends CliScript{
     );
 
     function main($options) {
+        parent::main($options);
         $this->search(
             $options->args[0], 
             $options->paths, 

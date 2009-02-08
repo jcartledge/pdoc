@@ -8,13 +8,19 @@ class CliScript {
         array_shift($args);
         $description = array_merge(array('#help' => 'Display this message'), $this->description);
         $options = new Options($description, $args);
-        if($options->help) {
-            $this->help();
-        } else {
-            $this->main($options);
-        }
+        $this->main($options);
     }
-    function help() {
-        echo "FUCK OFF";
+    function main($options) {
+        if ($options->help) $this->help($options);
+    }
+    function help($options) {
+        foreach($options->opts as $long_name => $option) {
+            echo sprintf("  -%s, --%s%s\r\t\t\t\t%s\r\n",
+                $option['short'],
+                $long_name,
+                $option['flag'] ? "\t" : '=' . strtoupper($long_name),
+                $option['description']);
+        };
+        exit;
     }
 }
